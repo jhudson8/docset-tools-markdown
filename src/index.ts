@@ -63,7 +63,7 @@ const plugin: Plugin = {
         const outputPath = join(dirPath, fileName);
         ensureDirSync(dirPath);
         writeFileSync(
-          outputPath,
+          name ? outputPath : join(tempDir, "index.html"),
           template({
             prefix: name ? "../" : "./",
             content: htmlContent,
@@ -90,6 +90,8 @@ const plugin: Plugin = {
       "Readme.markdown",
       "readme.md",
       "readme.markdown",
+      join(docsPath, "index.md"),
+      join(docsPath, "index.markdown"),
     ].forEach((name) => {
       const srcPath = join(process.cwd(), name);
       render({
@@ -102,6 +104,10 @@ const plugin: Plugin = {
     const recurse = (typeFromFilesystem: string, children: string[]) => {
       const type = getKnownType(typeFromFilesystem || docsType);
       children.forEach((name) => {
+        if (!type && ["index.markdown", "index.md"].indexOf(name) >= 0) {
+          // skip this file because it's the index
+        }
+
         const srcPath = typeFromFilesystem
           ? join(docsPath, typeFromFilesystem, name)
           : join(docsPath, name);
