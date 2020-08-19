@@ -16,6 +16,7 @@ import {
 import { join, basename } from "path";
 import showdown from "showdown";
 import template from "./template";
+import { copyFile, copyFileSync } from "fs";
 const highlight = require("showdown-highlight");
 
 const plugin: Plugin = {
@@ -48,6 +49,7 @@ const plugin: Plugin = {
       join(pluginOptions.docsPath, "index.md"),
       join(pluginOptions.docsPath, "index.markdown"),
     ];
+    const indexNamesWithBase = indexNames.map(normalizePath);
 
     const render = ({
       type,
@@ -59,34 +61,45 @@ const plugin: Plugin = {
       srcPath: string;
     }) => {
       if (existsSync(srcPath)) {
-        const data = readFileSync(srcPath, { encoding: "utf8" });
-        const htmlContent = converter.makeHtml(data);
-        const fileName = name
-          ? basename(srcPath).replace(/\.[^\.]*$/, ".html")
-          : "index.html";
-        const dirPath = name ? join(tempDir, type) : tempDir;
-        const outputPath = join(dirPath, fileName);
-        ensureDirSync(dirPath);
-        writeFileSync(
-          name ? outputPath : join(tempDir, "index.html"),
-          template({
-            prefix: name ? "../" : "./",
-            content: htmlContent,
-          }),
-          { encoding: "utf8" }
-        );
-        if (!name) {
-          rtn.index = "markdown/index.html";
+        if (
+          srcPath.endsWith(".md") ||
+          srcPath.endsWith(".MD") ||
+          srcPath.endsWith(".Markdown") ||
+          srcPath.endsWith(".markdown")
+        ) {
+          const data = readFileSync(srcPath, { encoding: "utf8" });
+          const htmlContent = converter.makeHtml(data);
+          const fileName = name
+            ? basename(srcPath).replace(/\.[^\.]*$/, ".html")
+            : "index.html";
+          const dirPath = name ? join(tempDir, type) : tempDir;
+          const outputPath = join(dirPath, fileName);
+          ensureDirSync(dirPath);
+          writeFileSync(
+            name ? outputPath : join(tempDir, "index.html"),
+            template({
+              prefix: name ? "../" : "./",
+              content: htmlContent,
+            }),
+            { encoding: "utf8" }
+          );
+          if (!name) {
+            rtn.index = "markdown/index.html";
+          } else {
+            if (indexNamesWithBase.indexOf(srcPath) >= 0) {
+              // forget it
+              return;
+            }
+            if (!rtn[type]) {
+              (rtn as any)[type] = {};
+            }
+            const entryName = name.replace(/\.[^\.]+$/, "");
+            (rtn as any)[type][entryName] = `markdown/${type}/${fileName}`;
+          }
         } else {
-          if (indexNames.indexOf(srcPath) >= 0) {
-            // forget it
-            return;
-          }
-          if (!rtn[type]) {
-            (rtn as any)[type] = {};
-          }
-          const entryName = name.replace(/\.[^\.]+$/, "");
-          (rtn as any)[type][entryName] = `markdown/${type}/${fileName}`;
+          // just copy the file
+          const outputPath = join(tempDir, type, basename(srcPath));
+          copyFileSync(srcPath, outputPath);
         }
       }
     };
