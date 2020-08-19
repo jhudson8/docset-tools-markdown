@@ -44,6 +44,11 @@ const plugin: Plugin = {
       ...pluginOptions.showdownConverterOptions,
     });
 
+    const indexNames = [
+      join(pluginOptions.docsPath, "index.md"),
+      join(pluginOptions.docsPath, "index.markdown"),
+    ];
+
     const render = ({
       type,
       name,
@@ -73,6 +78,10 @@ const plugin: Plugin = {
         if (!name) {
           rtn.index = "markdown/index.html";
         } else {
+          if (indexNames.indexOf(srcPath) >= 0) {
+            // forget it
+            return;
+          }
           if (!rtn[type]) {
             (rtn as any)[type] = {};
           }
@@ -90,8 +99,7 @@ const plugin: Plugin = {
       "Readme.markdown",
       "readme.md",
       "readme.markdown",
-      join(docsPath, "index.md"),
-      join(docsPath, "index.markdown"),
+      ...indexNames,
     ].forEach((name) => {
       const srcPath = join(process.cwd(), name);
       render({
