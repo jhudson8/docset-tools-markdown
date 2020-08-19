@@ -16,7 +16,7 @@ import {
 import { join, basename } from "path";
 import showdown from "showdown";
 import template from "./template";
-import { copyFile, copyFileSync } from "fs";
+import { copyFileSync } from "fs";
 const highlight = require("showdown-highlight");
 
 const plugin: Plugin = {
@@ -98,7 +98,9 @@ const plugin: Plugin = {
           }
         } else {
           // just copy the file
-          const outputPath = join(tempDir, type, basename(srcPath));
+          const dirPath = name ? join(tempDir, type) : tempDir;
+          ensureDirSync(dirPath);
+          const outputPath = join(dirPath, basename(srcPath));
           copyFileSync(srcPath, outputPath);
         }
       }
