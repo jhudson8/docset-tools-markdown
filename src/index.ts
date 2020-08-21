@@ -28,7 +28,8 @@ const plugin: Plugin = {
     if (!docsType) {
       throw new Error('Invalid type "' + pluginOptions.docsType + '"');
     }
-    if (!existsSync(docsPath)) {
+    const docsPathExists = existsSync(docsPath);
+    if (!docsPathExists) {
       console.error("markdown docs path does not exist: " + docsPath);
       return {};
     }
@@ -161,8 +162,11 @@ const plugin: Plugin = {
         }
       });
     };
-    const items = readdirSync(docsPath);
-    recurse(undefined, items);
+
+    if (docsPathExists) {
+      const items = readdirSync(docsPath);
+      recurse(undefined, items);
+    }
 
     await include({
       path: join(__dirname, "../assets"),
