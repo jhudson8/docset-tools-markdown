@@ -31,7 +31,6 @@ const plugin: Plugin = {
     const docsPathExists = existsSync(docsPath);
     if (!docsPathExists) {
       console.error("markdown docs path does not exist: " + docsPath);
-      return {};
     }
 
     const rtn: DocsetEntries = {};
