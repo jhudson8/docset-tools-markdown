@@ -1,4 +1,7 @@
+.DS_Store
 test/test.docset
+yarn.lock
+package-lock.json
 
 # Logs
 logs

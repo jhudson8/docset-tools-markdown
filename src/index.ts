@@ -17,6 +17,7 @@ import { join, basename } from "path";
 import showdown from "showdown";
 import template from "./template";
 import { copyFileSync } from "fs";
+import copy from "recursive-copy";
 const highlight = require("showdown-highlight");
 
 const plugin: Plugin = {
@@ -124,9 +125,22 @@ const plugin: Plugin = {
       });
     });
 
-    const recurse = (typeFromFilesystem: string, children: string[]) => {
+    const recurse = async (typeFromFilesystem: string, children: string[]) => {
       const type = getKnownType(typeFromFilesystem || docsType);
-      children.forEach((name) => {
+
+      if (typeFromFilesystem === "assets") {
+        const path = join(docsPath, typeFromFilesystem);
+        if (lstatSync(path).isDirectory()) {
+          // associated assets, copy the directory without modification
+          const assetsOutputPath = join(tempDir, "assets");
+          ensureDirSync(assetsOutputPath);
+          await copy(path, assetsOutputPath);
+          return;
+        }
+      }
+
+      for (let i = 0; i < children.length; i++) {
+        const name = children[i];
         if (!type && ["index.markdown", "index.md"].indexOf(name) >= 0) {
           // skip this file because it's the index
         }
@@ -134,6 +148,7 @@ const plugin: Plugin = {
         const srcPath = typeFromFilesystem
           ? join(docsPath, typeFromFilesystem, name)
           : join(docsPath, name);
+
         if (!type) {
           console.log(
             "skipping ",
@@ -148,7 +163,7 @@ const plugin: Plugin = {
               return;
             } else {
               const items = readdirSync(srcPath);
-              recurse(name, items);
+              await recurse(name, items);
             }
           } else {
             const entryName = decodeURIComponent(name);
@@ -159,12 +174,12 @@ const plugin: Plugin = {
             });
           }
         }
-      });
+      }
     };
 
     if (docsPathExists) {
       const items = readdirSync(docsPath);
-      recurse(undefined, items);
+      await recurse(undefined, items);
     }
 
     await include({
