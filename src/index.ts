@@ -13,7 +13,7 @@ import {
   lstatSync,
   ensureDirSync,
 } from "fs-extra";
-import { join, basename } from "path";
+import { join, basename, dirname } from "path";
 import showdown from "showdown";
 import template from "./template";
 import { copyFileSync } from "fs";
@@ -58,7 +58,7 @@ const plugin: Plugin = {
       srcPath,
     }: {
       type: DocsetEntryType | "index";
-      name: string | null; // null for `index` type
+      name?: string | null; // null for `index` type, undefined for simple render and no outline entry
       srcPath: string;
     }) => {
       if (existsSync(srcPath)) {
@@ -70,32 +70,48 @@ const plugin: Plugin = {
         ) {
           const data = readFileSync(srcPath, { encoding: "utf8" });
           const htmlContent = converter.makeHtml(data);
-          const fileName = name
-            ? basename(srcPath).replace(/\.[^\.]*$/, ".html")
-            : "index.html";
-          const dirPath = name ? join(tempDir, type) : tempDir;
-          const outputPath = join(dirPath, fileName);
-          ensureDirSync(dirPath);
+          let filePath = srcPath
+            .substring(process.cwd().length)
+            .replace(/\\/g, "/")
+            .replace(/\.[^\.]*$/, ".html");
+          const outputPath = join(tempDir, filePath);
+          ensureDirSync(dirname(outputPath));
+          const filePathParts = filePath
+            .replace(/\/[^/]+$/, "")
+            .replace(/^\//, "")
+            .split("/")
+            .filter((o) => o);
           writeFileSync(
-            name ? outputPath : join(tempDir, "index.html"),
+            outputPath,
             template({
-              prefix: name ? "../" : "./",
+              prefix:
+                filePathParts.length === 0
+                  ? "./"
+                  : filePathParts.map(() => "../").join(""),
               content: htmlContent,
             }),
             { encoding: "utf8" }
           );
-          if (!name) {
-            rtn.index = "markdown/index.html";
+          if (name === null) {
+            rtn.index = "markdown" + filePath;
+            // remove entry if exists
+            Object.entries(rtn).forEach(([key, value]) => {
+              if (typeof value === "object") {
+                Object.entries(value).forEach(([_key, path]) => {
+                  if (path === rtn.index) {
+                    delete value[_key];
+                  }
+                });
+              }
+            });
           } else {
-            if (indexNamesWithBase.indexOf(srcPath) >= 0) {
-              // forget it
-              return;
+            if (type !== undefined) {
+              if (!rtn[type]) {
+                (rtn as any)[type] = {};
+              }
+              const entryName = name.replace(/\.[^\.]+$/, "");
+              (rtn as any)[type][entryName] = `markdown${filePath}`;
             }
-            if (!rtn[type]) {
-              (rtn as any)[type] = {};
-            }
-            const entryName = name.replace(/\.[^\.]+$/, "");
-            (rtn as any)[type][entryName] = `markdown/${type}/${fileName}`;
           }
         } else {
           // just copy the file
@@ -106,24 +122,6 @@ const plugin: Plugin = {
         }
       }
     };
-
-    // check the READMEs
-    [
-      "README.md",
-      "README.markdown",
-      "Readme.md",
-      "Readme.markdown",
-      "readme.md",
-      "readme.markdown",
-      ...indexNames,
-    ].forEach((name) => {
-      const srcPath = join(process.cwd(), name);
-      render({
-        type: "index",
-        name: null,
-        srcPath,
-      });
-    });
 
     const recurse = async (typeFromFilesystem: string, children: string[]) => {
       const type = getKnownType(typeFromFilesystem || docsType);
@@ -141,28 +139,37 @@ const plugin: Plugin = {
 
       for (let i = 0; i < children.length; i++) {
         const name = children[i];
-        if (!type && ["index.markdown", "index.md"].indexOf(name) >= 0) {
-          // skip this file because it's the index
-        }
-
         const srcPath = typeFromFilesystem
           ? join(docsPath, typeFromFilesystem, name)
           : join(docsPath, name);
 
         if (!type) {
-          console.log(
-            "skipping ",
-            srcPath,
-            " due to invalid type: ",
-            typeFromFilesystem || docsType
-          );
+          if (typeFromFilesystem) {
+            // copy the file but don't include in the outline
+            if (lstatSync(srcPath).isDirectory()) {
+              const items = readdirSync(srcPath);
+              await recurse(typeFromFilesystem + "/" + name, items);
+            } else {
+              render({
+                type: undefined,
+                name: undefined,
+                srcPath,
+              });
+            }
+          } else {
+            console.log(
+              "skipping ",
+              srcPath,
+              " due to invalid type: ",
+              typeFromFilesystem || docsType
+            );
+          }
         } else {
           if (lstatSync(srcPath).isDirectory()) {
+            const items = readdirSync(srcPath);
             if (typeFromFilesystem) {
-              // we don't support deep nesting
-              return;
+              await recurse(typeFromFilesystem + "/" + name, items);
             } else {
-              const items = readdirSync(srcPath);
               await recurse(name, items);
             }
           } else {
@@ -181,6 +188,24 @@ const plugin: Plugin = {
       const items = readdirSync(docsPath);
       await recurse(undefined, items);
     }
+
+    // check the READMEs
+    [
+      "README.md",
+      "README.markdown",
+      "Readme.md",
+      "Readme.markdown",
+      "readme.md",
+      "readme.markdown",
+      ...indexNames,
+    ].forEach((name) => {
+      const srcPath = join(process.cwd(), name);
+      render({
+        type: "index",
+        name: null,
+        srcPath,
+      });
+    });
 
     await include({
       path: join(__dirname, "../assets"),
