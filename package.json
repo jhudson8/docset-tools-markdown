@@ -1,6 +1,6 @@
 {
   "name": "docset-tools-markdown",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -21,17 +21,17 @@
   },
   "homepage": "https://github.com/jhudson8/docset-tools-markdown#readme",
   "devDependencies": {
-    "@types/fs-extra": "^9.0.1",
-    "@types/node": "^14.0.27",
-    "@types/showdown": "^1.9.3",
-    "docset-tools-creator": "^0.0.13",
-    "typescript": "^3.9.7"
+    "@types/fs-extra": "^9.0.13",
+    "@types/node": "^14.18.36",
+    "@types/showdown": "^1.9.4",
+    "docset-tools-creator": "^1.0.0-alpha.2",
+    "typescript": "^4.9.4"
   },
   "dependencies": {
-    "docset-tools-types": "0.0.15",
-    "fs-extra": "^9.0.1",
-    "recursive-copy": "^2.0.11",
-    "showdown": "^1.9.1",
-    "showdown-highlight": "^2.1.7"
+    "docset-tools-types": "^1.0.0",
+    "fs-extra": "^11.1.0",
+    "recursive-copy": "^2.0.14",
+    "showdown": "^2.1.0",
+    "showdown-highlight": "^3.1.0"
   }
 }
